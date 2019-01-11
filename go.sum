@@ -1,0 +1,11 @@
+github.com/DataDog/datadog-go v0.0.0-20180822151419-281ae9f2d895 h1:dmc/C8bpE5VkQn65PNbbyACDC8xw8Hpp/NEurdPmQDQ=
+github.com/DataDog/datadog-go v0.0.0-20180822151419-281ae9f2d895/go.mod h1:LButxg5PwREeZtORoXG3tL4fMGNddJ+vMq1mwgfaqoQ=
+github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
+github.com/gorilla/mux v1.6.2 h1:Pgr17XVTNXAk3q/r4CpKzC5xBM/qW1uVLV+IhRZpIIk=
+github.com/gorilla/mux v1.6.2/go.mod h1:1lud6UwP+6orDFRuTfBEV8e9/aOM/c4fVVCaMa2zaAs=
+github.com/hashicorp/go-hclog v0.0.0-20190109152822-4783caec6f2e h1:SS6R03q1M5bxjbOL2JziQUUu7opiRocL4R2H5Y2I6rY=
+github.com/hashicorp/go-hclog v0.0.0-20190109152822-4783caec6f2e/go.mod h1:5CU+agLiy3J7N7QjHK5d05KxGsuXiQLrjA0H7acj2lQ=
+github.com/nicholasjackson/env v0.2.0 h1:RN0W5LYYFaT1DS1mJ/MYyoKKhjsQq8f43DnYNfEz9Wo=
+github.com/nicholasjackson/env v0.2.0/go.mod h1:8PvK2K2IBkG9ANQ9TJq7D0EGIblM5hS5SglTXLkX/04=
+github.com/pmezard/go-difflib v1.0.0/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=
+github.com/stretchr/testify v1.2.2/go.mod h1:a8OnRcib4nhh0OaRAV+Yts87kKdq0PP7pXfy6kDkUVs=
