@@ -1,66 +1,34 @@
 package handlers
 
 import (
+	"bytes"
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
-	"os"
 	"testing"
 
 	"github.com/matryer/is"
 )
 
-func setup(t *testing.T) (httptest.ResponseRecorder, *http.Request, *Post) {
-	return httptest.NewRecorder()
-}
-
-func TestDetectsFacesInImageAndReturnsImage(t *testing.T) {
-	is := is.New(t)
-	input := "group.jpg"
-	defer setEnv("Http_Query", "output=image")()
-
-	bytes, err := ioutil.ReadFile(input)
-	is.NoErr(err) // Error should be nil
-
-	resp := Handle(bytes)
-
-	ioutil.WriteFile("./out.jpg", []byte(resp), os.ModePerm)
+func setup(t *testing.T) (*httptest.ResponseRecorder, *http.Request, *Post) {
+	return httptest.NewRecorder(), httptest.NewRequest("POST", "/", nil), NewPost("../cascades")
 }
 
 func TestDetectsFacesInImageAndReturnsJSON(t *testing.T) {
+	input := "../test_fixtures/group.jpg"
+	rr, r, h := setup(t)
 	is := is.New(t)
-	input := "group.jpg"
-
-	bytes, err := ioutil.ReadFile(input)
+	data, err := ioutil.ReadFile(input)
 	is.NoErr(err) // Error should be nil
 
-	j := &Response{}
-	resp := Handle(bytes)
-	json.Unmarshal([]byte(resp), j)
-
-	is.Equal(true, len(j.Faces) > 0)
-}
-
-func TestDetectsFacesInImageAndReturnsJSONWithImage(t *testing.T) {
-	is := is.New(t)
-	input := "group.jpg"
-	defer setEnv("Http_Query", "output=json_image")()
-
-	bytes, err := ioutil.ReadFile(input)
-	is.NoErr(err) // Error should be nil
+	r.Body = ioutil.NopCloser(bytes.NewReader(data))
 
 	j := &Response{}
-	resp := Handle(bytes)
-	json.Unmarshal([]byte(resp), j)
+	h.ServeHTTP(rr, r)
+	json.Unmarshal(rr.Body.Bytes(), j)
 
-	is.Equal(true, len(j.ImageBase64) > 0)
-}
-
-func setEnv(key, value string) func() {
-	os.Setenv(key, value)
-
-	return func() {
-		os.Unsetenv(key)
-	}
+	fmt.Printf("%#v/n", j)
+	is.Equal(true, len(j.Faces) == 14)
 }

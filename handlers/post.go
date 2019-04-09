@@ -21,15 +21,38 @@ import (
 
 // Response for the function
 type Response struct {
-	Faces       []image.Rectangle
-	Bounds      image.Rectangle
-	ImageBase64 string
+	Faces  []image.Rectangle
+	Bounds image.Rectangle
 }
 
 // Post is a http handler which detects faces using the OpenCV library and GoCV
 type Post struct {
 	cascadeLocation string
+	faceProcessor   *FaceProcessor
 	logger          logging.Logger
+}
+
+// NewPost creates a new face processor handler
+func NewPost(cl string) *Post {
+	// load classifier to recognize faces
+	classifier1 := gocv.NewCascadeClassifier()
+	classifier1.Load(cl + "/haarcascade_frontalface_default.xml")
+
+	classifier2 := gocv.NewCascadeClassifier()
+	classifier2.Load(cl + "/haarcascade_eye.xml")
+
+	classifier3 := gocv.NewCascadeClassifier()
+	classifier3.Load(cl + "/haarcascade_eye_tree_eyeglasses.xml")
+
+	p := &Post{}
+
+	p.faceProcessor = &FaceProcessor{
+		faceclassifier:  &classifier1,
+		eyeclassifier:   &classifier2,
+		glassclassifier: &classifier3,
+	}
+
+	return p
 }
 
 // ServeHTTP handles the request
@@ -57,8 +80,7 @@ func (p *Post) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
 
 	io.Copy(tmpfile, bytes.NewBuffer(data))
 
-	faceProcessor := NewFaceProcessor()
-	faces, bounds := faceProcessor.DetectFaces(tmpfile.Name())
+	faces, bounds := p.faceProcessor.DetectFaces(tmpfile.Name())
 
 	resp := Response{
 		Faces:  faces,
@@ -97,25 +119,6 @@ type FaceProcessor struct {
 	glassclassifier *gocv.CascadeClassifier
 }
 
-// NewFaceProcessor creates a new face processor loading any dependent settings
-func NewFaceProcessor() *FaceProcessor {
-	// load classifier to recognize faces
-	classifier1 := gocv.NewCascadeClassifier()
-	classifier1.Load("./cascades/haarcascade_frontalface_default.xml")
-
-	classifier2 := gocv.NewCascadeClassifier()
-	classifier2.Load("./cascades/haarcascade_eye.xml")
-
-	classifier3 := gocv.NewCascadeClassifier()
-	classifier3.Load("./cascades/haarcascade_eye_tree_eyeglasses.xml")
-
-	return &FaceProcessor{
-		faceclassifier:  &classifier1,
-		eyeclassifier:   &classifier2,
-		glassclassifier: &classifier3,
-	}
-}
-
 // DetectFaces detects faces in the image and returns an array of rectangle
 func (fp *FaceProcessor) DetectFaces(file string) (faces []image.Rectangle, bounds image.Rectangle) {
 	img := gocv.IMRead(file, gocv.IMReadColor)
@@ -127,40 +130,43 @@ func (fp *FaceProcessor) DetectFaces(file string) (faces []image.Rectangle, boun
 
 	// detect faces
 	tmpfaces := fp.faceclassifier.DetectMultiScaleWithParams(
-		img, 1.07, 5, 0, image.Point{X: 10, Y: 10}, image.Point{X: 500, Y: 500},
+		img, 1.07, 6, 0, image.Point{X: 10, Y: 10}, image.Point{X: 500, Y: 500},
 	)
 
-	fcs := make([]image.Rectangle, 0)
+	/*
+		fcs := make([]image.Rectangle, 0)
+		fmt.Println("faces", len(tmpfaces))
 
-	if len(tmpfaces) > 0 {
-		// draw a rectangle around each face on the original image
-		for _, f := range tmpfaces {
-			// detect eyes
-			faceImage := img.Region(f)
+		if len(tmpfaces) > 0 {
+			for _, f := range tmpfaces {
+				// detect eyes
+				faceImage := img.Region(f)
 
-			eyes := fp.eyeclassifier.DetectMultiScaleWithParams(
-				faceImage, 1.01, 1, 0, image.Point{X: 0, Y: 0}, image.Point{X: 100, Y: 100},
-			)
+				eyes := fp.eyeclassifier.DetectMultiScaleWithParams(
+					faceImage, 1.01, 1, 0, image.Point{X: 0, Y: 0}, image.Point{X: 100, Y: 100},
+				)
 
-			if len(eyes) > 0 {
-				fcs = append(fcs, f)
-				continue
+				if len(eyes) > 0 {
+					fcs = append(fcs, f)
+					continue
+				}
+
+				glasses := fp.glassclassifier.DetectMultiScaleWithParams(
+					faceImage, 1.01, 1, 0, image.Point{X: 0, Y: 0}, image.Point{X: 100, Y: 100},
+				)
+
+				if len(glasses) > 0 {
+					fcs = append(fcs, f)
+					continue
+				}
 			}
 
-			glasses := fp.glassclassifier.DetectMultiScaleWithParams(
-				faceImage, 1.01, 1, 0, image.Point{X: 0, Y: 0}, image.Point{X: 100, Y: 100},
-			)
-
-			if len(glasses) > 0 {
-				fcs = append(fcs, f)
-				continue
-			}
+			fmt.Println("final", len(fcs))
+			return fcs, bds
 		}
+	*/
 
-		return fcs, bds
-	}
-
-	return nil, bds
+	return tmpfaces, bds
 }
 
 // DrawFaces adds a rectangle to the given image with the face location
