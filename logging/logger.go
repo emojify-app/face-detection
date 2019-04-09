@@ -7,10 +7,11 @@ import (
 	hclog "github.com/hashicorp/go-hclog"
 )
 
-var statsPrefix = "facedetection.service."
+var statsPrefix = "service.facedetection."
 
 // Logger defines an interface for common logging operations
 type Logger interface {
+	Log() hclog.Logger
 	ServiceStart(address, port string)
 	HealthHandlerCalled() Finished
 }
@@ -38,6 +39,11 @@ func New(name, statsDServer, logLevel string) (Logger, error) {
 type LoggerImpl struct {
 	l hclog.Logger
 	s *statsd.Client
+}
+
+// Log returns the underlying logger
+func (l *LoggerImpl) Log() hclog.Logger {
+	return l.l
 }
 
 // ServiceStart logs information about the service start

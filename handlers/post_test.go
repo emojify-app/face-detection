@@ -16,6 +16,19 @@ func setup(t *testing.T) (*httptest.ResponseRecorder, *http.Request, *Post) {
 	return httptest.NewRecorder(), httptest.NewRequest("POST", "/", nil), NewPost("../cascades")
 }
 
+func TestReturnsBadRequestWhenBodyNotImage(t *testing.T) {
+	input := "../test_fixtures/file.txt"
+	rr, r, h := setup(t)
+	is := is.New(t)
+	data, err := ioutil.ReadFile(input)
+	is.NoErr(err) // Error should be nil
+	r.Body = ioutil.NopCloser(bytes.NewReader(data))
+
+	h.ServeHTTP(rr, r)
+
+	is.Equal(http.StatusBadRequest, rr.Code)
+}
+
 func TestDetectsFacesInImageAndReturnsJSON(t *testing.T) {
 	input := "../test_fixtures/group.jpg"
 	rr, r, h := setup(t)

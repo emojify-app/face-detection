@@ -8,7 +8,6 @@ import (
 	"image/color"
 	"io"
 	"io/ioutil"
-	"log"
 	"net/http"
 	"os"
 	"time"
@@ -28,38 +27,26 @@ type Response struct {
 // Post is a http handler which detects faces using the OpenCV library and GoCV
 type Post struct {
 	cascadeLocation string
-	faceProcessor   *FaceProcessor
 	logger          logging.Logger
 }
 
 // NewPost creates a new face processor handler
 func NewPost(cl string) *Post {
 	// load classifier to recognize faces
-	classifier1 := gocv.NewCascadeClassifier()
-	classifier1.Load(cl + "/haarcascade_frontalface_default.xml")
 
-	classifier2 := gocv.NewCascadeClassifier()
-	classifier2.Load(cl + "/haarcascade_eye.xml")
-
-	classifier3 := gocv.NewCascadeClassifier()
-	classifier3.Load(cl + "/haarcascade_eye_tree_eyeglasses.xml")
-
-	p := &Post{}
-
-	p.faceProcessor = &FaceProcessor{
-		faceclassifier:  &classifier1,
-		eyeclassifier:   &classifier2,
-		glassclassifier: &classifier3,
-	}
-
-	return p
+	return &Post{cascadeLocation: cl}
 }
 
 // ServeHTTP handles the request
 func (p *Post) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
+	// OpenCV can panic, make sure we catch it
+	defer func() {
+		if r := recover(); r != nil {
+			p.logger.Log().Error("Recovered in f", "trace", r)
+		}
+	}()
 
 	var data []byte
-
 	data, err := ioutil.ReadAll(r.Body)
 	if err != nil {
 		http.Error(rw, "No response body", http.StatusBadRequest)
@@ -68,19 +55,24 @@ func (p *Post) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
 
 	typ := http.DetectContentType(data)
 	if typ != "image/jpeg" && typ != "image/png" {
-		http.Error(rw, "Only jpeg or png images, either raw uncompressed bytes or base64 encoded are acceptable inputs, you uploaded: "+typ, http.StatusBadRequest)
+		http.Error(
+			rw,
+			"Only jpeg or png images, either raw uncompressed bytes or base64 encoded are acceptable inputs, you uploaded: "+typ,
+			http.StatusBadRequest,
+		)
 	}
 
 	tmpfile, err := ioutil.TempFile("/tmp", "image")
 	if err != nil {
-		log.Fatal(err)
+		p.logger.Log().Error("Unable to create temporary file", "error", err)
 	}
 
 	defer os.Remove(tmpfile.Name()) // clean up
 
 	io.Copy(tmpfile, bytes.NewBuffer(data))
 
-	faces, bounds := p.faceProcessor.DetectFaces(tmpfile.Name())
+	fp := NewFaceProcessor(p.cascadeLocation)
+	faces, bounds := fp.DetectFaces(tmpfile.Name())
 
 	resp := Response{
 		Faces:  faces,
@@ -117,6 +109,24 @@ type FaceProcessor struct {
 	faceclassifier  *gocv.CascadeClassifier
 	eyeclassifier   *gocv.CascadeClassifier
 	glassclassifier *gocv.CascadeClassifier
+}
+
+// NewFaceProcessor loads the cascades and creates a new face processor
+func NewFaceProcessor(cl string) *FaceProcessor {
+	classifier1 := gocv.NewCascadeClassifier()
+	classifier1.Load(cl + "/haarcascade_frontalface_default.xml")
+
+	classifier2 := gocv.NewCascadeClassifier()
+	classifier2.Load(cl + "/haarcascade_eye.xml")
+
+	classifier3 := gocv.NewCascadeClassifier()
+	classifier3.Load(cl + "/haarcascade_eye_tree_eyeglasses.xml")
+
+	return &FaceProcessor{
+		faceclassifier:  &classifier1,
+		eyeclassifier:   &classifier2,
+		glassclassifier: &classifier3,
+	}
 }
 
 // DetectFaces detects faces in the image and returns an array of rectangle

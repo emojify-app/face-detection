@@ -8,5 +8,7 @@ require (
 	github.com/hashicorp/go-hclog v0.8.0
 	github.com/matryer/is v1.2.0
 	github.com/nicholasjackson/env v0.2.0
+	github.com/stretchr/objx v0.2.0 // indirect
+	github.com/stretchr/testify v1.3.0
 	gocv.io/x/gocv v0.19.0
 )
