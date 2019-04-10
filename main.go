@@ -11,11 +11,11 @@ import (
 	"github.com/nicholasjackson/env"
 )
 
-var listenAddress = env.String("ADDRESS", false, "127.0.0.1", "Listen address for the server")
+var listenAddress = env.String("BIND_ADDRESS", false, "127.0.0.1", "Listen address for the server")
 var listenPort = env.String("PORT", false, "9090", "Listen port for the server")
 var statsDAddress = env.String("STATSD", false, "localhost:8125", "Location of the statsd collector")
 var logLevel = env.String("LOG_LEVEL", false, "info", "Log level [info,debug,trace]")
-var cascadeFolder = env.String("CASCASE_FOLDER", false, "./cascades", "location of the OpenCV cascades")
+var cascadeFolder = env.String("CASCADE_FOLDER", false, "./cascades", "location of the OpenCV cascades")
 
 func main() {
 	// Parse the config env vars
