@@ -7,6 +7,7 @@ import (
 	"net/http"
 )
 
+// Client interface for interaction with the service
 type Client interface {
 	DetectFaces(r io.Reader)
 }
@@ -40,6 +41,7 @@ func (h *HTTPClient) DetectFaces(r io.Reader) (*Response, error) {
 	}
 
 	faces := &Response{}
+	defer resp.Body.Close()
 	d := json.NewDecoder(resp.Body)
 
 	err = d.Decode(faces)
