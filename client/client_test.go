@@ -9,7 +9,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func setup(t *testing.T) (*httptest.Server, *HTTPClient) {
+func setup(t *testing.T) (*httptest.Server, *FaceDetect) {
 	s := httptest.NewServer(handlers.NewPost("../cascades"))
 
 	return s, NewClient(s.URL)
