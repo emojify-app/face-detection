@@ -27,9 +27,8 @@ type Response struct {
 
 // NewClient creates a new FaceDetect
 func NewClient(l string) *FaceDetect {
-	hc := &http.Client{
-		Timeout: 60 * time.Second,
-	}
+	hc := http.DefaultClient
+	hc.Timeout = 60 * time.Second
 
 	return &FaceDetect{hc, l}
 }
@@ -41,7 +40,7 @@ func (h *FaceDetect) DetectFaces(r io.Reader) (*Response, error) {
 		return nil, err
 	}
 
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := h.httpClient.Do(req)
 	if err != nil {
 		return nil, err
 	}
