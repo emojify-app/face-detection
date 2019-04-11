@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"image"
 	"io"
-	"net"
 	"net/http"
 	"time"
 )
@@ -28,19 +27,9 @@ type Response struct {
 
 // NewClient creates a new FaceDetect
 func NewClient(l string) *FaceDetect {
-	hc := http.DefaultClient
-	hc.Timeout = 60 * time.Second
-	// force transport to use ipv4
-	hc.Transport = &http.Transport{
-		Dial: (func(network, addr string) (net.Conn, error) {
-			return (&net.Dialer{
-				Timeout:   3 * time.Second,
-				LocalAddr: nil,
-				DualStack: false,
-			}).Dial("tcp4", addr)
-		}),
+	hc := &http.Client{
+		Timeout: 60 * time.Second,
 	}
-
 	return &FaceDetect{hc, l}
 }
 
