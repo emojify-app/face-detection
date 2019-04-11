@@ -72,6 +72,7 @@ func (p *Post) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
 	io.Copy(tmpfile, bytes.NewBuffer(data))
 
 	fp := NewFaceProcessor(p.cascadeLocation)
+	defer fp.Close()
 	faces, bounds := fp.DetectFaces(tmpfile.Name())
 
 	resp := Response{
@@ -112,20 +113,25 @@ type FaceProcessor struct {
 }
 
 // NewFaceProcessor loads the cascades and creates a new face processor
+// to clear memory Close() must be called
 func NewFaceProcessor(cl string) *FaceProcessor {
+	// create clasifiers, to avoid leaking memory classifiers must be
+	// closed after use
 	classifier1 := gocv.NewCascadeClassifier()
 	classifier1.Load(cl + "/haarcascade_frontalface_default.xml")
 
-	classifier2 := gocv.NewCascadeClassifier()
-	classifier2.Load(cl + "/haarcascade_eye.xml")
+	/*
+		classifier2 := gocv.NewCascadeClassifier()
+		classifier2.Load(cl + "/haarcascade_eye.xml")
 
-	classifier3 := gocv.NewCascadeClassifier()
-	classifier3.Load(cl + "/haarcascade_eye_tree_eyeglasses.xml")
+		classifier3 := gocv.NewCascadeClassifier()
+		classifier3.Load(cl + "/haarcascade_eye_tree_eyeglasses.xml")
+	*/
 
 	return &FaceProcessor{
-		faceclassifier:  &classifier1,
-		eyeclassifier:   &classifier2,
-		glassclassifier: &classifier3,
+		faceclassifier: &classifier1,
+		//eyeclassifier:   &classifier2,
+		//glassclassifier: &classifier3,
 	}
 }
 
@@ -197,4 +203,11 @@ func (fp *FaceProcessor) DrawFaces(file string, faces []image.Rectangle) ([]byte
 	defer os.Remove(filename) // clean up
 
 	return ioutil.ReadFile(filename)
+}
+
+// Close frees allocated memory
+func (fp *FaceProcessor) Close() {
+	fp.faceclassifier.Close()
+	//fp.eyeclassifier.Close()
+	//fp.glassclassifier.Close()
 }
