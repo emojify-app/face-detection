@@ -6,7 +6,6 @@ import (
 	"os"
 
 	"net/http/pprof"
-	_ "net/http/pprof"
 
 	"github.com/emojify-app/face-detection/handlers"
 	"github.com/emojify-app/face-detection/logging"
