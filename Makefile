@@ -13,4 +13,4 @@ push_docker:
 	docker push nicholasjackson/emojify-facedetection:${VERSION}
 
 test_docker:
-	curl -XPOST --data-binary @test_fixtures/group.jpg localhost:9090
+	curl -s -XPOST --data-binary @test_fixtures/group.jpg localhost:9090 | jq

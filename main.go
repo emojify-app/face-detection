@@ -51,6 +51,7 @@ func main() {
 	r.Handle("/", fd).Methods("POST")
 
 	if *profile {
+		l.Log().Warn("Enabling profiling")
 		// Register pprof handlers
 		r.HandleFunc("/debug/pprof/", pprof.Index)
 		r.HandleFunc("/debug/pprof/cmdline", pprof.Cmdline)

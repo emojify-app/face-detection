@@ -5,12 +5,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"image"
-	"image/color"
 	"io"
 	"io/ioutil"
 	"net/http"
 	"os"
-	"time"
 
 	"github.com/emojify-app/face-detection/logging"
 	"gocv.io/x/gocv"
@@ -32,8 +30,6 @@ type Post struct {
 
 // NewPost creates a new face processor handler
 func NewPost(cl string) *Post {
-	// load classifier to recognize faces
-
 	return &Post{cascadeLocation: cl}
 }
 
@@ -60,20 +56,28 @@ func (p *Post) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
 			"Only jpeg or png images, either raw uncompressed bytes or base64 encoded are acceptable inputs, you uploaded: "+typ,
 			http.StatusBadRequest,
 		)
+		return
 	}
 
+	// create a temporary file to be read by OpenCV
 	tmpfile, err := ioutil.TempFile("/tmp", "image")
 	if err != nil {
 		p.logger.Log().Error("Unable to create temporary file", "error", err)
+		return
 	}
+	defer os.Remove(tmpfile.Name()) // clean up temporary file on exit
 
-	defer os.Remove(tmpfile.Name()) // clean up
-
+	// copy the body into a temporary file
 	io.Copy(tmpfile, bytes.NewBuffer(data))
 
 	fp := NewFaceProcessor(p.cascadeLocation)
 	defer fp.Close()
-	faces, bounds := fp.DetectFaces(tmpfile.Name())
+
+	faces, bounds, err := fp.DetectFaces(tmpfile.Name())
+	if err != nil {
+		http.Error(rw, err.Error(), http.StatusInternalServerError)
+		return
+	}
 
 	resp := Response{
 		Faces:  faces,
@@ -90,26 +94,9 @@ func (p *Post) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
 	rw.Write(j)
 }
 
-// BySize allows sorting images by size
-type BySize []image.Rectangle
-
-func (s BySize) Len() int {
-	return len(s)
-}
-func (s BySize) Swap(i, j int) {
-	s[i], s[j] = s[j], s[i]
-}
-func (s BySize) Less(i, j int) bool {
-	return s[i].Size().X > s[j].Size().X && s[i].Size().Y > s[j].Size().Y
-}
-
-var yellow = color.RGBA{255, 255, 0, 0}
-
 // FaceProcessor detects the position of a face from an input image
 type FaceProcessor struct {
-	faceclassifier  *gocv.CascadeClassifier
-	eyeclassifier   *gocv.CascadeClassifier
-	glassclassifier *gocv.CascadeClassifier
+	faceclassifier *gocv.CascadeClassifier
 }
 
 // NewFaceProcessor loads the cascades and creates a new face processor
@@ -120,94 +107,38 @@ func NewFaceProcessor(cl string) *FaceProcessor {
 	classifier1 := gocv.NewCascadeClassifier()
 	classifier1.Load(cl + "/haarcascade_frontalface_default.xml")
 
-	/*
-		classifier2 := gocv.NewCascadeClassifier()
-		classifier2.Load(cl + "/haarcascade_eye.xml")
-
-		classifier3 := gocv.NewCascadeClassifier()
-		classifier3.Load(cl + "/haarcascade_eye_tree_eyeglasses.xml")
-	*/
-
 	return &FaceProcessor{
 		faceclassifier: &classifier1,
-		//eyeclassifier:   &classifier2,
-		//glassclassifier: &classifier3,
 	}
-}
-
-// DetectFaces detects faces in the image and returns an array of rectangle
-func (fp *FaceProcessor) DetectFaces(file string) (faces []image.Rectangle, bounds image.Rectangle) {
-	img := gocv.IMRead(file, gocv.IMReadColor)
-	defer img.Close()
-
-	bds := image.Rectangle{Min: image.Point{}, Max: image.Point{X: img.Cols(), Y: img.Rows()}}
-	//gocv.CvtColor(img, img, gocv.ColorRGBToGray)
-	//	gocv.Resize(img, img, image.Point{}, 0.6, 0.6, gocv.InterpolationArea)
-
-	// detect faces
-	tmpfaces := fp.faceclassifier.DetectMultiScaleWithParams(
-		img, 1.07, 6, 0, image.Point{X: 10, Y: 10}, image.Point{X: 500, Y: 500},
-	)
-
-	/*
-		fcs := make([]image.Rectangle, 0)
-		fmt.Println("faces", len(tmpfaces))
-
-		if len(tmpfaces) > 0 {
-			for _, f := range tmpfaces {
-				// detect eyes
-				faceImage := img.Region(f)
-
-				eyes := fp.eyeclassifier.DetectMultiScaleWithParams(
-					faceImage, 1.01, 1, 0, image.Point{X: 0, Y: 0}, image.Point{X: 100, Y: 100},
-				)
-
-				if len(eyes) > 0 {
-					fcs = append(fcs, f)
-					continue
-				}
-
-				glasses := fp.glassclassifier.DetectMultiScaleWithParams(
-					faceImage, 1.01, 1, 0, image.Point{X: 0, Y: 0}, image.Point{X: 100, Y: 100},
-				)
-
-				if len(glasses) > 0 {
-					fcs = append(fcs, f)
-					continue
-				}
-			}
-
-			fmt.Println("final", len(fcs))
-			return fcs, bds
-		}
-	*/
-
-	return tmpfaces, bds
-}
-
-// DrawFaces adds a rectangle to the given image with the face location
-func (fp *FaceProcessor) DrawFaces(file string, faces []image.Rectangle) ([]byte, error) {
-	if len(faces) == 0 {
-		return ioutil.ReadFile(file)
-	}
-
-	img := gocv.IMRead(file, gocv.IMReadColor)
-	defer img.Close()
-
-	for _, r := range faces {
-		gocv.Rectangle(&img, r, yellow, 1)
-	}
-
-	filename := fmt.Sprintf("/tmp/%d.jpg", time.Now().UnixNano())
-	gocv.IMWrite(filename, img)
-	defer os.Remove(filename) // clean up
-
-	return ioutil.ReadFile(filename)
 }
 
 // Close frees allocated memory
 func (fp *FaceProcessor) Close() {
 	fp.faceclassifier.Close()
-	//fp.eyeclassifier.Close()
-	//fp.glassclassifier.Close()
+}
+
+// DetectFaces detects faces in the image and returns an array of rectangle
+func (fp *FaceProcessor) DetectFaces(file string) (faces []image.Rectangle, bounds image.Rectangle, err error) {
+	img := gocv.IMRead(file, gocv.IMReadColor)
+	if img.Empty() {
+		return nil, image.Rectangle{}, fmt.Errorf("Unable to read image")
+	}
+	defer img.Close()
+
+	// convert the image to greyscale for better processing
+	greyImg := gocv.NewMat()
+	defer greyImg.Close()
+
+	gocv.CvtColor(img, &greyImg, gocv.ColorRGBToGray)
+	gocv.EqualizeHist(greyImg, &greyImg)
+
+	// define the bounds of the image
+	bds := image.Rectangle{Min: image.Point{}, Max: image.Point{X: img.Cols(), Y: img.Rows()}}
+
+	// detect faces
+	tmpfaces := fp.faceclassifier.DetectMultiScaleWithParams(
+		greyImg, 1.07, 6, 0, image.Point{X: 10, Y: 10}, image.Point{X: 500, Y: 500},
+	)
+
+	return tmpfaces, bds, nil
 }
