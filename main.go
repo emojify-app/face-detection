@@ -15,10 +15,17 @@ import (
 
 var listenAddress = env.String("BIND_ADDRESS", false, "127.0.0.1", "Listen address for the server")
 var listenPort = env.String("BIND_PORT", false, "9090", "Listen port for the server")
+
 var statsDAddress = env.String("STATSD_ADDRESS", false, "localhost:8125", "Location of the statsd collector")
+
 var logLevel = env.String("LOG_LEVEL", false, "info", "log level [info,debug,trace]")
-var cascadeFolder = env.String("CASCADE_FOLDER", false, "./cascades", "location of the OpenCV cascades")
+
 var profile = env.Bool("PROFILE", false, false, "enable pprof profiling")
+
+// OpenCV parameters
+var cascadeFolder = env.String("CASCADE_FOLDER", false, "./cascades", "location of the OpenCV cascades")
+var scaleFactor = env.Float("SCALE_FACTOR", false, 1.05, "scale factor for OpenCV face recognition")
+var minNeighbors = env.Integer("MIN_NEIGHBORS", false, 8, "min neighbors for OpenCV face recogntion")
 
 func main() {
 	// Parse the config env vars
@@ -44,7 +51,7 @@ func main() {
 	f.Close()
 
 	h := handlers.NewHealth(l)
-	fd := handlers.NewPost(*cascadeFolder)
+	fd := handlers.NewPostWithParams(*cascadeFolder, *scaleFactor, *minNeighbors)
 
 	r := mux.NewRouter()
 	r.Handle("/health", h).Methods("GET")

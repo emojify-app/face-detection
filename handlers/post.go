@@ -10,8 +10,8 @@ import (
 	"net/http"
 	"os"
 
+	"github.com/emojify-app/face-detection/detection"
 	"github.com/emojify-app/face-detection/logging"
-	"gocv.io/x/gocv"
 )
 
 // Request is base64 encoded image
@@ -26,11 +26,27 @@ type Response struct {
 type Post struct {
 	cascadeLocation string
 	logger          logging.Logger
+	scaleFactor     float64
+	minNeighbors    int
 }
 
-// NewPost creates a new face processor handler
-func NewPost(cl string) *Post {
-	return &Post{cascadeLocation: cl}
+// NewPost creates a new face processor handler with default parameters
+func NewPost(cascadeLocation string) *Post {
+	return &Post{
+		cascadeLocation: cascadeLocation,
+		scaleFactor:     1.05,
+		minNeighbors:    8,
+	}
+}
+
+// NewPostWithParams creates a new face processor handler
+// Face detection parameters can be tuned by setting scaleFactor and minNeighbors
+func NewPostWithParams(cascadeLocation string, scaleFactor float64, minNeighbors int) *Post {
+	return &Post{
+		cascadeLocation: cascadeLocation,
+		scaleFactor:     scaleFactor,
+		minNeighbors:    minNeighbors,
+	}
 }
 
 // ServeHTTP handles the request
@@ -70,7 +86,7 @@ func (p *Post) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
 	// copy the body into a temporary file
 	io.Copy(tmpfile, bytes.NewBuffer(data))
 
-	fp := NewFaceProcessor(p.cascadeLocation)
+	fp := detection.New(p.cascadeLocation, p.scaleFactor, p.minNeighbors)
 	defer fp.Close()
 
 	faces, bounds, err := fp.DetectFaces(tmpfile.Name())
@@ -92,53 +108,4 @@ func (p *Post) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
 
 	// return the coordinates
 	rw.Write(j)
-}
-
-// FaceProcessor detects the position of a face from an input image
-type FaceProcessor struct {
-	faceclassifier *gocv.CascadeClassifier
-}
-
-// NewFaceProcessor loads the cascades and creates a new face processor
-// to clear memory Close() must be called
-func NewFaceProcessor(cl string) *FaceProcessor {
-	// create clasifiers, to avoid leaking memory classifiers must be
-	// closed after use
-	classifier1 := gocv.NewCascadeClassifier()
-	classifier1.Load(cl + "/haarcascade_frontalface_default.xml")
-
-	return &FaceProcessor{
-		faceclassifier: &classifier1,
-	}
-}
-
-// Close frees allocated memory
-func (fp *FaceProcessor) Close() {
-	fp.faceclassifier.Close()
-}
-
-// DetectFaces detects faces in the image and returns an array of rectangle
-func (fp *FaceProcessor) DetectFaces(file string) (faces []image.Rectangle, bounds image.Rectangle, err error) {
-	img := gocv.IMRead(file, gocv.IMReadColor)
-	if img.Empty() {
-		return nil, image.Rectangle{}, fmt.Errorf("Unable to read image")
-	}
-	defer img.Close()
-
-	// convert the image to greyscale for better processing
-	greyImg := gocv.NewMat()
-	defer greyImg.Close()
-
-	gocv.CvtColor(img, &greyImg, gocv.ColorRGBToGray)
-	gocv.EqualizeHist(greyImg, &greyImg)
-
-	// define the bounds of the image
-	bds := image.Rectangle{Min: image.Point{}, Max: image.Point{X: img.Cols(), Y: img.Rows()}}
-
-	// detect faces
-	tmpfaces := fp.faceclassifier.DetectMultiScaleWithParams(
-		greyImg, 1.07, 6, 0, image.Point{X: 10, Y: 10}, image.Point{X: 500, Y: 500},
-	)
-
-	return tmpfaces, bds, nil
 }

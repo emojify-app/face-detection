@@ -3,13 +3,12 @@ package handlers
 import (
 	"bytes"
 	"encoding/json"
-	"fmt"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
-	"github.com/matryer/is"
+	"github.com/stretchr/testify/assert"
 )
 
 func setup(t *testing.T) (*httptest.ResponseRecorder, *http.Request, *Post) {
@@ -19,22 +18,23 @@ func setup(t *testing.T) (*httptest.ResponseRecorder, *http.Request, *Post) {
 func TestReturnsBadRequestWhenBodyNotImage(t *testing.T) {
 	input := "../test_fixtures/file.txt"
 	rr, r, h := setup(t)
-	is := is.New(t)
 	data, err := ioutil.ReadFile(input)
-	is.NoErr(err) // Error should be nil
+
+	assert.Nil(t, err)
+
 	r.Body = ioutil.NopCloser(bytes.NewReader(data))
 
 	h.ServeHTTP(rr, r)
 
-	is.Equal(http.StatusBadRequest, rr.Code)
+	assert.Equal(t, http.StatusBadRequest, rr.Code)
 }
 
 func TestDetectsFacesInImageAndReturnsJSON(t *testing.T) {
 	input := "../test_fixtures/group.jpg"
 	rr, r, h := setup(t)
-	is := is.New(t)
 	data, err := ioutil.ReadFile(input)
-	is.NoErr(err) // Error should be nil
+
+	assert.Nil(t, err)
 
 	r.Body = ioutil.NopCloser(bytes.NewReader(data))
 
@@ -42,6 +42,6 @@ func TestDetectsFacesInImageAndReturnsJSON(t *testing.T) {
 	h.ServeHTTP(rr, r)
 	json.Unmarshal(rr.Body.Bytes(), j)
 
-	fmt.Printf("%#v/n", j)
-	is.Equal(true, len(j.Faces) == 14)
+	//fmt.Printf("%#v/n", j)
+	assert.Equal(t, 14, len(j.Faces))
 }

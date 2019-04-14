@@ -1,4 +1,4 @@
-VERSION=v0.1.3
+VERSION=v0.1.9
 
 build:
 	go build -o facedetection .
