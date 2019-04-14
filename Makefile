@@ -1,4 +1,4 @@
-VERSION=v0.1.9
+VERSION=v0.10.0
 
 build:
 	go build -o facedetection .
@@ -11,6 +11,9 @@ run_docker:
 
 push_docker:
 	docker push nicholasjackson/emojify-facedetection:${VERSION}
+
+tag:
+	git tag ${VERSION} && git push origin ${VERSION}
 
 test_docker:
 	curl -s -XPOST --data-binary @test_fixtures/group.jpg localhost:9090 | jq
