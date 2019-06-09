@@ -10,7 +10,7 @@ import (
 
 // Client interface for interaction with the service
 type Client interface {
-	DetectFaces(r io.Reader)
+	DetectFaces(r io.Reader) (*Response, error)
 }
 
 // FaceDetect is a http client for the face detection service
